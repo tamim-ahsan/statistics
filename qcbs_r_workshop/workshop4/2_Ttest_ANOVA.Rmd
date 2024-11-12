@@ -1,0 +1,209 @@
+---
+title: "Linear Models workshop (#4) of the R QCBS Workshops Series"
+topics: Linear Regression, T-test, ANOVA
+date: 8/11/2024
+link: https://r.qcbs.ca/workshops/r-workshop-04/ 
+---
+```{r}
+# 1. Load libraries
+library(car)
+library(dplyr)
+library(vegan)
+library(MASS)
+library(effects)
+library(e1071)
+library(gtsummary)
+```
+
+# 2. Load data and explore it
+```{r}
+# 2.1 Load data
+bird <- read.csv("birdsdiet.csv", stringsAsFactors = TRUE)
+```
+
+
+```{r}
+# 2.2 Structure of the dataframe
+str(bird)
+```
+
+```{r}
+# 2.3 Transform the data
+bird$logMaxAbund <- log10(bird$MaxAbund)
+bird$logMass <- log10(bird$Mass)
+```
+
+# 3. ANOVA and T-test
+##Assumptions of t-test
+### 1. Normality 
+### 2. Homoscedasticity --> can be tested by the variance ratio test (F test)
+```{r}
+# 3.1 Testing assumptions of t-test
+var.test(logMass ~ Aquatic, data = bird)
+```
+```{r}
+# 3.2 T test
+ttest1 <- t.test(x = bird$logMass[bird$Aquatic == 0],
+                 y = bird$logMass[bird$Aquatic == 1],
+                 var.equal = TRUE)
+ttest1
+```
+```{r}
+# 3.3 Running the t test with lm() function
+lm.t <- lm(logMass ~ Aquatic, data = bird)
+anova(lm.t)
+```
+
+
+```{r}
+# 3.4 When variances are equal t^2 = F
+print(ttest1$statistic^2)
+print(anova(lm.t)$F)
+```
+
+```{r}
+# 3.5 Unilateral t-test
+uni.ttest1 <- t.test(logMass ~ Aquatic, data = bird, var.equal = TRUE,
+                     alternative = "less")
+uni.ttest1
+```
+```{r}
+# 3.5 Unilateral t-test with greater value
+uni.ttest2 <- t.test(logMass ~ Aquatic, data = bird, var.equal = TRUE,
+                     alternative = "greater")
+uni.ttest2
+```
+# Assumptions of ANOVA
+## 1. Normality
+## 2. Homoscedasticity
+## 3. Additivity
+
+```{r}
+# 3.6 Boxplot to visualize the data
+boxplot(logMaxAbund ~ Diet, data = bird)
+```
+```{r}
+# 3.7 Reorder the plot and add some color
+med <- sort(tapply(bird$logMaxAbund, bird$Diet, median))
+boxplot(logMaxAbund ~ factor(Diet, levels = names(med)), data = bird,
+        col = c("white", "lightblue1", "skyblue1", "skyblue3", "skyblue4"))
+```
+```{r}
+# 3.8 Design plot
+plot.design(logMaxAbund ~ Diet, data = bird,
+            ylab = expression("log"[10]*"(Maximum Abundance)"))
+```
+```{r}
+# 3.9 As there is some differences, ANOVA can be performed
+aov1 <- aov(logMaxAbund ~ Diet, data = bird)
+opar <- par(mfrow = c(2,2))
+plot(aov1)
+par(opar)
+```
+```{r}
+# 3.10 Normality of the residuals
+shapiro.test(resid(aov1))
+```
+```{r}
+# 3.11 Homogeneity of the variance
+bartlett.test(logMaxAbund ~ Diet, data = bird)
+```
+```{r}
+# 3.12 Equality of the variance - Levene's test
+car::leveneTest(logMaxAbund ~ Diet, data = bird)
+```
+```{r}
+# 3.13 Summary of the ANOVA model
+summary.lm(aov1)
+```
+```{r}
+# 3.14 Running ANOVA using lm() function
+anov1 <- lm(logMaxAbund ~ Diet, data = bird)
+anova(anov1)
+```
+```{r}
+# 3.15 Post-hoc test
+TukeyHSD(aov1)
+```
+```{r}
+# 3.16 Contrasts
+## Better than a posteriori comparison like TukeyHSD as they are based on a priori hypotheses
+tapply(bird$logMaxAbund, bird$Diet, mean)
+```
+```{r}
+# 3.17 Coefficients of the ANOVA model
+coef(anov1)
+```
+```{r}
+# 3.18 Compare against the reference level of "plant"
+bird$Diet2 <- relevel(bird$Diet, ref= "Plant")
+anova_rl <- lm(logMaxAbund ~ Diet2, data = bird)
+summary(anova_rl)
+```
+```{r}
+# 3.19 Anova of the linear model
+anova(anova_rl)
+```
+```{r}
+# 3.20 Look at the contrasts
+contrasts(bird$Diet2)
+```
+```{r}
+# 3.21 The conditions of orthogonality 
+## 1. Coefficients must sum to 0
+## 2. Any two columns must sum to 0
+print(sum(contrasts(bird$Diet2)[,1]))
+print(sum(contrasts(bird$Diet2)[,1] * contrasts(bird$Diet2)[,2]))
+```
+```{r}
+# 3.22 Ensuring orthogonality to make the contrasts independent
+options(contrasts = c("contr.helmert", "contr.poly"))
+sum(contrasts(bird$Diet2)[,1])
+```
+```{r}
+# 3.23 Run ANOVA when orhogonality is ensured
+anov3 <- lm(logMaxAbund ~ Diet, data = bird)
+summary(anov3)
+```
+```{r}
+# 3.24 Creating own contrasts
+contrasts(bird$Diet2) <- cbind(
+  c(4, -1, -1, -1, -1),
+  c(0, 1, 1, -1, -1),
+  c(0, 0, 1, -1),
+  c(0, 1, -1, 0)
+)
+
+summary(lm(logMaxAbund ~ Diet2, data = bird))
+```
+```{r}
+# 3.25 Interaction plot (Two-way ANOVA)
+interaction.plot(bird$Diet, bird$Aquatic, bird$logMaxAbund, col = "black",
+                 ylab = expression("log"[10]*"(Maximum Abundance)"),
+                 xlab = "Diet")
+```
+```{r}
+# 3.26 Unbalanced ANOVA 
+## When the sample sizes of two factor levels are unequal
+table(bird$Aquatic)
+```
+
+
+```{r}
+# 3.27 Unequal sample sizes may cause problems
+unb_anov1 <- lm(logMaxAbund ~ Aquatic + Diet, data = bird)
+unb_anov2 <- lm(logMaxAbund ~ Diet + Aquatic, data = bird)
+
+print(anova(unb_anov1))
+print(anova(unb_anov2))
+```
+
+
+```{r}
+# 3.28 Solution: Using type 3 sum of squares
+print(car::Anova(unb_anov1, type = "III"))
+print(car::Anova(unb_anov2, type = "III"))
+```
+```{r}
+sessionInfo()
+```

@@ -1,0 +1,114 @@
+---
+title: "Linear Models workshop (#4) of the R QCBS Workshops Series"
+topics: "Multiple Linear Regression"
+date: 12/11/2024
+link: https://r.qcbs.ca/workshops/r-workshop-04/
+---
+
+```{r}
+# 1. Load libraries
+library(car)
+library(dplyr)
+library(vegan)
+library(MASS)
+library(effects)
+library(e1071)
+library(gtsummary)
+```
+
+# 2. Load and manipulate the dataframe 
+```{r}
+# 2.1 Load the dataframe
+dickcissel <- read.csv("dickcissel.csv")
+str(dickcissel)
+```
+
+# 3. Running multiple linear regression
+```{r}
+# 3.1 Set up and run the model
+lm <- lm(formula = abund ~ clTma + NDVI + grass, data = dickcissel)
+summary(lm)
+```
+```{r}
+# 3.2 Look at the diagnostic plots
+par(mfrow = c(2,2))
+plot(lm)
+```
+```{r}
+# 3.3 Look at the coefficients
+summary(lm)$coefficients
+```
+```{r}
+# 3.4 Relationship of each variable
+par(mfrow = c(1,3), mar = c(4, 4, 0.5, 0.5), cex = 1)
+plot(abund ~ clTma, data = dickcissel)
+plot(abund ~ NDVI, data = dickcissel)
+plot(abund ~ grass, data = dickcissel)
+```
+# 4. Polynomial regression
+```{r}
+# 4.1 set up the models to see which one should be used
+lm.lin <- lm(formula = abund ~ clDD, data = dickcissel)
+lm.quad <- lm(formula = abund ~ clDD + I(clDD^2), data = dickcissel)
+lm.cub <- lm(formula = abund ~ clDD + I(clDD^2) + I(clDD^3), data = dickcissel)
+```
+```{r}
+# 4.2 Summary of the first model
+summary(lm.lin)
+```
+```{r}
+# 4.3 Summary of the second model
+summary(lm.quad)
+```
+```{r}
+# 4.4 Summary of the third model
+summary(lm.cub)
+```
+# 5. Variation partitioning
+```{r}
+# 5.1 Test for collinearity using variance inflation factor
+mod <- lm(formula = clDD ~ clFD + clTmi + clTma + clP + grass, data = dickcissel)
+car::vif(mod)
+```
+```{r}
+warnings()
+```
+```{r}
+# 5.2 Variation partition
+part.lm = varpart(dickcissel$abund, 
+                  dickcissel[, c("clDD", "clFD", "clTmi", "clTma", "clP")],
+                  dickcissel[, c("broadleaf", "conif", "grass", "crop", "urban", "wetland")])
+part.lm
+```
+```{r}
+# 5.3 Visualize variation partition
+plot(part.lm,
+     digits = 2,
+     bg = "orange2",
+     col = "turquoise4")
+```
+```{r}
+# 5.4 Significance of each fraction
+## climate
+out.1 <- rda(dickcissel$abund, 
+             dickcissel[, c("clDD", "clFD", "clTmi", "clTma", "clP")],
+             dickcissel[, c("broadleaf", "conif", "grass", "crop", "urban", "wetland")])
+
+## land cover
+out.2 <- rda(dickcissel$abund,
+             dickcissel[, c("broadleaf", "conif", "grass", "crop", "urban", "wetland")],
+             dickcissel[, c("clDD", "clFD", "clTmi", "clTma", "clP")])
+```
+```{r}
+# 5.5 Significance of the climate
+anova(out.1, step = 1000, perm.max = 1000)
+```
+```{r}
+# 5.6 Significance of the land cover
+anova(out.2, step = 1000, perm.max = 1000)
+```
+```{r}
+sessionInfo()
+```
+ 
+
