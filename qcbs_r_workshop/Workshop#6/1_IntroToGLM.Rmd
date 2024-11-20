@@ -1,0 +1,118 @@
+---
+title: "QCBS R Workshop Series"
+purpose: "Follow along workshop no. 6"
+link: https://r.qcbs.ca/workshop06/book-en/index.html 
+date: 13/11/2024
+---
+
+# 1. Load libraries 
+```{r}
+library(ggplot2)
+library(MASS)
+library(vcdExtra)
+library(bbmle)
+library(DescTools)
+library(GlmSimulatoR)
+library(cplm)
+library(ggpmisc)
+```
+# 2. Read and explore the data
+```{r}
+# 2.1 read the dataframe
+mites <- read.csv("mites.csv",
+                  stringsAsFactors = TRUE)
+head(mites)
+```
+```{r}
+# 2.2 Look at the dataframe
+str(mites)
+```
+# 2.3 Create plots to see if linear relationships exist between the response variable and the potential predictors
+```{r}
+plot(Galumna ~ WatrCont,
+     data = mites,
+     xlab = "Water content",
+     ylab = "Abundance")
+```
+```{r}
+boxplot(WatrCont ~ pa,
+        data = mites,
+        xlab = "Presence/Absence",
+        ylab = "Water content")
+```
+```{r}
+plot(prop ~ WatrCont,
+     data = mites,
+     xlab = "Water content",
+     ylab = "Proportion")
+```
+# 3. Fit various linear models
+```{r}
+# Abundance model
+lm.abund <- lm(Galumna ~ WatrCont, data = mites)
+summary(lm.abund)
+```
+```{r}
+# Presence-absence model
+lm.pa <- lm(pa ~ WatrCont, data = mites)
+summary(lm.pa)
+```
+```{r}
+# Proportion model
+lm.prop <- lm(prop ~ WatrCont, data = mites)
+summary(lm.prop)
+```
+# 3.1 Check if the assumptions linear models are met
+```{r}
+plot(Galumna ~ WatrCont, data = mites)
+abline(lm.abund)
+```
+```{r}
+plot(lm.abund)
+```
+```{r}
+plot(prop ~ WatrCont, data = mites)
+abline(lm.prop)
+```
+```{r}
+plot(lm.prop)
+```
+```{r}
+plot(pa ~ WatrCont, data = mites)
+abline(lm.pa)
+```
+```{r}
+plot(lm.pa)
+```
+```{r}
+# Extract varince 
+summary(lm.abund)$sigma
+```
+# 4. Distribution of biological data
+```{r}
+# 4.1 Poisson distribution at various lambda
+par(cex = 2)
+x <- seq(1, 50, 1)
+plot(x, dpois(x, lambda = 1), type = "h", lwd = 3, xlab = "Freq of Galumna", ylab = "P", main = "lambda = 1")
+
+plot(x, dpois(x, lambda = 10), type = "h", lwd = 3, xlab = "Freq of Galumna", ylab = "P", main = "lambda = 10")
+
+plot(x, dpois(x, lambda = 30), type = "h", lwd = 3, xlab = "Freq of Galumna", ylab = "P", main = "lambda = 30")
+```
+```{r}
+# 4.2 look at the distribution of Galumna frequency
+hist(mites$Galumna)
+```
+```{r}
+# 4.3 Mean of Galumna
+mean(mites$Galumna)
+```
+```{r}
+# 4.4 Distribution of presence-absence
+hist(mites$pa)
+```
+```{r}
+# 4.5 Probablity of the presence of Galumna
+sum(mites$pa)/nrow(mites)
+```
+

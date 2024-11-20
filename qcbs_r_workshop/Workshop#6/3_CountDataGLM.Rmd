@@ -1,0 +1,103 @@
+---
+title: "QCBS R Workshop Series"
+purpose: "Follow along workshop no. 6: Count Data GLM"
+link: https://r.qcbs.ca/workshop06/book-en/index.html 
+date: 13/11/2024
+---
+
+# 1. Load libraries 
+```{r}
+library(ggplot2)
+library(MASS)
+library(vcdExtra)
+library(bbmle)
+library(DescTools)
+library(GlmSimulatoR)
+library(cplm)
+library(ggpmisc)
+```
+# 2. Read the data
+```{r}
+# 2.1 read the dataframe
+faramea <- read.csv("faramea.csv", header = TRUE)
+str(faramea)
+```
+```{r}
+# 2.2 Look at the expression 
+hist(faramea$Faramea.occidentalis,
+     breaks = seq(0, 45, 1),
+     xlab = expression(paste("Number of ", italic(Faraema~occidentalis))),
+     ylab = "Frequency",
+     main = "",
+     col = "grey")
+```
+# 3. Poisson distribution
+```{r}
+# 3.1 Set up the model
+glm.poisson = glm(Faramea.occidentalis ~ Elevation,
+                  data = faramea,
+                  family = poisson)
+summary(glm.poisson)
+```
+```{r}
+# 3.2 Goodness of fit
+DescTools::PseudoR2(glm.poisson, which = "all")
+```
+```{r}
+# 3.3 Visualize the results
+ggplot(faramea, aes(x = Elevation, y = Faramea.occidentalis))+
+  geom_point() +
+  geom_smooth(method = "glm", method.args = list(family = poisson), se= TRUE) +
+  theme_classic()
+```
+#4. Quasi-Poisson GLM
+```{r}
+# 4.1 update the previous model
+glm.quasipoisson <- update(glm.poisson, family = quasipoisson)
+summary(glm.quasipoisson)
+```
+```{r}
+# 4.2 Model comparisons
+null.model <- glm(Faramea.occidentalis ~ 1,
+                  data = faramea,
+                  family = quasipoisson)
+anova(null.model, glm.quasipoisson, test = "Chisq")
+```
+```{r}
+# 4.3 Visualize the results
+ggplot(faramea, aes(x = Elevation, y = Faramea.occidentalis))+
+  geom_point() +
+  geom_smooth(method = "glm", method.args = list(family = quasipoisson), se= TRUE) +
+  theme_classic()
+```
+# 5. Negative binomial GLM
+```{r}
+# 5.1 Setting up the model
+glm.negbin <- glm.nb(formula = Faramea.occidentalis ~ Elevation,
+                     data = faramea)
+summary(glm.negbin)
+```
+```{r}
+# 5.2 Visualize the outputs
+pp <- predict(glm.negbin,
+              newdata = data.frame(Elevation = 1:800),
+              se.fit = TRUE)
+linkinv <- family(glm.negbin)$linkinv
+
+# Prepare to plot the model results
+pframe <- as.data.frame(pp$fit)
+names(pframe) <- "pred0"
+pframe$pred <- linkinv(pp$fit)
+sc <- abs(qnorm((1-0.95)/2))
+pframe <- transform(pframe, lwr = linkinv(pred0-sc*pp$se.fit),
+                    upr = linkinv(pred0+sc*pp$se.fit))
+
+# Plot 
+plot(faramea$Elevation, faramea$Faramea.occidentalis,
+     ylab = "Number of F. occidentalis",
+     xlab = "Elevation (m)")
+lines(pframe$pred, lwd = 2)
+lines(pframe$upr, col = 2, lty = 3, lwd = 2)
+lines(pframe$lwr, col = 2, lty = 3, lwd = 2)
+
+```

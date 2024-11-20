@@ -1,0 +1,74 @@
+---
+title: "QCBS R Workshop Series"
+purpose: "Follow along workshop no. 6: Binomial GLM"
+link: https://r.qcbs.ca/workshop06/book-en/index.html 
+date: 13/11/2024
+---
+
+# 1. Load libraries 
+```{r}
+library(ggplot2)
+library(MASS)
+library(vcdExtra)
+library(bbmle)
+library(DescTools)
+library(GlmSimulatoR)
+library(cplm)
+library(ggpmisc)
+```
+# 2. Read the data
+```{r}
+# 2.1 read the dataframe
+mites <- read.csv("mites.csv",
+                  stringsAsFactors = TRUE)
+head(mites)
+```
+```{r}
+# 2.2 Look at the dataframe
+str(mites)
+```
+# 3. Run Binomial GLM
+```{r}
+# 3.1 Use the mites dataset
+logit.reg <- glm(pa ~ WatrCont + Topo,
+                 data = mites,
+                 family = binomial(link = "logit"))
+summary(logit.reg)
+```
+```{r}
+# 3.3 Look at the coefficients
+summary(logit.reg)$coefficients
+```
+```{r}
+# 3.4 Calculate the goodness of fit
+DescTools::PseudoR2(logit.reg, which = "all")
+```
+```{r}
+# 3.5 Visual representation of the result
+ggplot(mites, aes(x = WatrCont, y = pa)) +
+  geom_point() +
+  geom_smooth(method = "glm", method.args = list(family = binomial), se = TRUE) +
+  labs(x = "Water content", y = "Probablity of presence", 
+         title = "Probability of presence of Galumna sp. against the water content") +
+  theme_classic()
+```
+
+```{r}
+# 3.6 Run with the bacteria dataset from MASS package
+model.bact1 <- glm(y ~ trt*week, data = bacteria, family = binomial)
+model.bact2 <- glm(y ~ trt + week, data = bacteria, family = binomial)
+model.bact3 <- glm(y ~ week, data = bacteria, family = binomial)
+
+# Which is the best model
+anova(model.bact1, model.bact2, model.bact3, test = "LRT")
+```
+
+# 4. Binomial GLM and Proportions
+```{r}
+prop.reg <- glm(formula = prop ~ Topo + WatrCont,
+                data = mites,
+                family = binomial,
+                weights = totalabund)
+summary(prop.reg)
+```
+
