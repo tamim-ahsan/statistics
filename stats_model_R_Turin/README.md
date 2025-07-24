@@ -1,1 +1,1 @@
-
+Within this directory, I store the scripts as I go through the codes and exercises for statistical modeling in R from the Polytechnic University of Turin. The contents can be accessed [here](https://toyo97.github.io/statistical-models-r/)
